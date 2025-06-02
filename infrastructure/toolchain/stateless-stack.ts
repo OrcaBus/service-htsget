@@ -1,24 +1,65 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { DeploymentStackPipeline } from '@orcabus/platform-cdk-constructs/deployment-stack-pipeline';
-import { getStackProps } from '../stage/config';
+import { HtsgetStack } from '../stage/htsget-stack';
+import { Pipeline } from 'aws-cdk-lib/aws-codepipeline';
+import { getHtsgetProps } from '../stage/config';
+
+/**
+ * Options for configuring the stateless stack.
+ */
+interface StatelessStackConfig {
+  /**
+   * Additional build environment variables when building the Lambda function.
+   */
+  readonly buildEnvironment?: Record<string, string>;
+}
 
 export class StatelessStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  readonly pipeline: Pipeline;
+
+  constructor(scope: Construct, id: string, props?: cdk.StackProps & StatelessStackConfig) {
     super(scope, id, props);
 
-    new DeploymentStackPipeline(this, 'DeploymentPipeline', {
+    const deployment = new DeploymentStackPipeline(this, 'DeploymentPipeline', {
       githubBranch: 'main',
-      githubRepo: /** TODO: Replace with string. Example: */ 'service-microservice-manager',
-      stack: /** TODO: Replace with Stack (e.g. TheStatelessStack) */ undefined as unknown,
-      stackName: /** TODO: Replace with string. Example: */ 'StatelessMicroserviceManager',
+      githubRepo: 'service-htsget',
+      stack: HtsgetStack,
+      stackName: 'HtsgetStack',
       stackConfig: {
-        beta: getStackProps('BETA'),
-        gamma: getStackProps('GAMMA'),
-        prod: getStackProps('PROD'),
+        beta: {
+          ...getHtsgetProps('BETA'),
+          buildEnvironment: props?.buildEnvironment,
+        },
+        gamma: {
+          ...getHtsgetProps('GAMMA'),
+          buildEnvironment: props?.buildEnvironment,
+        },
+        prod: {
+          ...getHtsgetProps('PROD'),
+          buildEnvironment: props?.buildEnvironment,
+        },
       },
-      pipelineName: /** TODO: Replace with string. Example: */ 'OrcaBus-StatelessMicroservice',
+      pipelineName: 'OrcaBus-StatelessHtsget',
       cdkSynthCmd: ['pnpm install --frozen-lockfile --ignore-scripts', 'pnpm cdk-stateless synth'],
+      synthBuildSpec: {
+        phases: {
+          install: {
+            'runtime-versions': {
+              nodejs: '22.x',
+            },
+            commands: [
+              "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+              'source $HOME/.cargo/env',
+              'rustup component add rustfmt',
+              'npm install -g @ziglang/cli',
+              'curl -fsSL https://cargo-lambda.info/install.sh | sh',
+            ],
+          },
+        },
+      },
     });
+
+    this.pipeline = deployment.pipeline;
   }
 }

@@ -1,55 +1,38 @@
-import { App, Aspects, Stack } from 'aws-cdk-lib';
+import { App, Aspects } from 'aws-cdk-lib';
 import { Annotations, Match } from 'aws-cdk-lib/assertions';
-import { SynthesisMessage } from 'aws-cdk-lib/cx-api';
-import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
-import { DeployStack } from '../infrastructure/stage/deployment-stack';
-
-function synthesisMessageToString(sm: SynthesisMessage): string {
-  return `${sm.entry.data} [${sm.id}]`;
-}
+import { AwsSolutionsChecks } from 'cdk-nag';
+import { getHtsgetProps } from '../infrastructure/stage/config';
+import { HtsgetStack } from '../infrastructure/stage/htsget-stack';
+import { synthesisMessageToString } from '@orcabus/platform-cdk-constructs/utils';
 
 describe('cdk-nag-stateless-toolchain-stack', () => {
-  const app = new App({});
+  const app = new App();
 
-  // You should configure all stack (sateless, stateful) to be tested
-  const deployStack = new DeployStack(app, 'DeployStack', {
-    // Pick the prod environment to test as it is the most strict
-    // ...getStackProps('PROD'),
+  const htsgetStack = new HtsgetStack(app, 'HtsgetStack', {
+    ...getHtsgetProps('PROD'),
+    env: {
+      account: '123456789',
+      region: 'ap-southeast-2',
+    },
+    buildEnvironment: {
+      // Need to have a separate build directory to the toolchain test to avoid concurrent build errors.
+      CARGO_TARGET_DIR: 'target-stage-test',
+    },
   });
 
-  Aspects.of(deployStack).add(new AwsSolutionsChecks());
-  applyNagSuppression(deployStack);
+  Aspects.of(htsgetStack).add(new AwsSolutionsChecks());
 
   test(`cdk-nag AwsSolutions Pack errors`, () => {
-    const errors = Annotations.fromStack(deployStack)
+    const errors = Annotations.fromStack(htsgetStack)
       .findError('*', Match.stringLikeRegexp('AwsSolutions-.*'))
       .map(synthesisMessageToString);
     expect(errors).toHaveLength(0);
   });
 
   test(`cdk-nag AwsSolutions Pack warnings`, () => {
-    const warnings = Annotations.fromStack(deployStack)
+    const warnings = Annotations.fromStack(htsgetStack)
       .findWarning('*', Match.stringLikeRegexp('AwsSolutions-.*'))
       .map(synthesisMessageToString);
     expect(warnings).toHaveLength(0);
   });
 });
-
-/**
- * apply nag suppression
- * @param stack
- */
-function applyNagSuppression(stack: Stack) {
-  // These are example suppressions for this stack and should be removed and replaced with the
-  // service-specific suppressions of your app.
-  NagSuppressions.addStackSuppressions(
-    stack,
-    [{ id: 'AwsSolutions-S10', reason: 'not require requests to use SSL' }],
-    true
-  );
-  NagSuppressions.addStackSuppressions(
-    stack,
-    [{ id: 'AwsSolutions-S1', reason: 'this is an example bucket' }],
-    true
-  );
-}
