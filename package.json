@@ -22,7 +22,6 @@
   "license": "MIT",
   "packageManager": "pnpm@10.8.0",
   "devDependencies": {
-    "@aws-sdk/client-eventbridge": "^3.758.0",
     "@eslint/js": "^9.23.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.13",
