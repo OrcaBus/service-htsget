@@ -1,9 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { DeploymentStackPipeline } from '@orcabus/platform-cdk-constructs/deployment-stack-pipeline';
-import { HtsgetStack } from '../stage/htsget-stack';
 import { Pipeline } from 'aws-cdk-lib/aws-codepipeline';
 import { getHtsgetProps } from '../stage/config';
+import { HtsgetStack } from '../stage/htsget-stack';
 
 /**
  * Options for configuring the stateless stack.
@@ -22,7 +22,8 @@ export class StatelessStack extends cdk.Stack {
     super(scope, id, props);
 
     const deployment = new DeploymentStackPipeline(this, 'DeploymentPipeline', {
-      githubBranch: 'main',
+      enableSlackNotification: false,
+      githubBranch: 'init',
       githubRepo: 'service-htsget',
       stack: HtsgetStack,
       stackName: 'HtsgetStack',
