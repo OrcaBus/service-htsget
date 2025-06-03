@@ -25,6 +25,11 @@ jobs:
     runs-on: ubuntu-24.04-arm
     if: ${{ !github.event.pull_request.draft }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -33,11 +38,6 @@ jobs:
       - name: Install pre-commit
         run: |
           pip3 install pre-commit
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - run: corepack enable
 
@@ -60,12 +60,19 @@ jobs:
     runs-on: ubuntu-24.04-arm
     if: ${{ !github.event.pull_request.draft }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Cache
         uses: mozilla-actions/sccache-action@v0.0.8
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: mlugg/setup-zig@v2
+      - run: curl -fsSL https://cargo-lambda.info/install.sh | sh
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -73,9 +80,6 @@ jobs:
           node-version: '22.x'
           cache: 'pnpm'
 
-      - uses: actions/checkout@v4
-
       - run: corepack enable
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: curl -fsSL https://cargo-lambda.info/install.sh | sh
       - run: make test
