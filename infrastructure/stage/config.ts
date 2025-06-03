@@ -14,7 +14,7 @@ export const getHtsgetProps = (stage: StageName): HtsgetStackConfig => {
     apiGatewayProps: {
       ...getDefaultApiGatewayConfiguration(stage),
       apiName: 'Htsget',
-      customDomainNamePrefix: 'htsget-file',
+      customDomainNamePrefix: 'htsget-file-dev',
     },
     buckets: [...fileManagerBuckets[stage], ...fileManagerCacheBuckets[stage]],
     roleName: fileManagerIngestRoleName,
