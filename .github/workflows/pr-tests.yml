@@ -25,22 +25,21 @@ jobs:
     runs-on: ubuntu-24.04-arm
     if: ${{ !github.event.pull_request.draft }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
           cache: 'pnpm'
-
-      - run: corepack enable
-
       - name: Install pre-commit
         run: |
           pip3 install pre-commit
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: corepack enable
 
       - name: TruffleHog OSS
         uses: trufflesecurity/trufflehog@v3.88.29
@@ -53,7 +52,6 @@ jobs:
       - name: Install dependencies
         run: |
           make install
-
       - name: Lint and code formatting
         run: |
           make check
@@ -64,24 +62,20 @@ jobs:
     steps:
       - name: Cache
         uses: mozilla-actions/sccache-action@v0.0.8
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: curl -fsSL https://cargo-lambda.info/install.sh | sh
-
-      - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
           cache: 'pnpm'
 
+      - uses: actions/checkout@v4
+
       - run: corepack enable
-
       - run: pnpm install --frozen-lockfile --ignore-scripts
-
+      - run: curl -fsSL https://cargo-lambda.info/install.sh | sh
       - run: make test
