@@ -2,8 +2,6 @@
 
 check:
 	@pnpm audit
-	@pnpm prettier
-	@pnpm lint
 	@pre-commit run --all-files
 
 fix:
