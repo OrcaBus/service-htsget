@@ -1,5 +1,4 @@
 import { HtsgetStackConfig } from './htsget-stack';
-import { StageName } from '@orcabus/platform-cdk-constructs/utils';
 import { getDefaultApiGatewayConfiguration } from '@orcabus/platform-cdk-constructs/api-gateway';
 import { vpcProps } from './constants';
 import {
@@ -7,6 +6,7 @@ import {
   fileManagerCacheBuckets,
   fileManagerIngestRoleName,
 } from '@orcabus/platform-cdk-constructs/shared-config/file-manager';
+import { StageName } from '@orcabus/platform-cdk-constructs/shared-config/accounts';
 
 export const getHtsgetProps = (stage: StageName): HtsgetStackConfig => {
   return {
