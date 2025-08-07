@@ -1,0 +1,16 @@
+[package]
+name = "htsget-auth"
+version = "0.1.0"
+license.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum = "0.8"
+envy = "0.4"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+http-serde = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi", "env-filter"] }
