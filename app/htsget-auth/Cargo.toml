@@ -12,5 +12,9 @@ envy = "0.4"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 http-serde = "2"
-tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi", "env-filter"] }
+tower-http = { version = "0.6", features = ["trace"] }
+tower = "0.5"
+utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid", "url"] }
+utoipa-swagger-ui = { version = "9", features = ["axum", "debug-embed", "url"] }
+tracing = "0.1"
