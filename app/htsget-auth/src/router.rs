@@ -179,3 +179,38 @@ pub const SWAGGER_UI_PATH: &str = "/schema/swagger-ui";
 pub fn swagger_ui() -> SwaggerUi {
     SwaggerUi::new(SWAGGER_UI_PATH).url("/schema/openapi.json", ApiDoc::openapi())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum_test::TestServer;
+
+    fn create_test_config() -> Config {
+        Config {
+            jwks_url: "https://example.com/.well-known/jwks.json".parse().unwrap(),
+            validate_audience: Some(vec!["test-audience".to_string()]),
+            validate_issuer: Some(vec!["test-issuer".to_string()]),
+            validate_subject: Some("test-subject".to_string()),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fallback_route() {
+        let config = create_test_config();
+        let app = router(config).unwrap();
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get("/nonexistent").await;
+        assert_eq!(response.status_code(), 404);
+    }
+
+    #[tokio::test]
+    async fn test_swagger_ui_route() {
+        let config = create_test_config();
+        let app = router(config).unwrap();
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get("/schema/swagger-ui/").await;
+        assert!(response.status_code() == 200 || response.status_code() == 301);
+    }
+}
