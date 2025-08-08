@@ -1,12 +1,12 @@
-use std::io;
 use axum::serve;
 use clap::Parser;
+use htsget_auth::config::Config;
+use htsget_auth::error::Result;
+use htsget_auth::router::{SWAGGER_UI_PATH, router};
 use http::Uri;
+use std::io;
 use tokio::net::TcpListener;
 use tracing::info;
-use htsget_auth::config::Config;
-use htsget_auth::router::{router, SWAGGER_UI_PATH};
-use htsget_auth::error::Result;
 
 /// Run the htsget auth API server locally to explore the API.
 #[derive(Parser, Debug)]
@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let config = Config::load()?;
 
-    let app = router(config);
+    let app = router(config)?;
     let listener = TcpListener::bind(args.api_server_addr).await?;
 
     let local_addr = listener.local_addr()?;
@@ -40,4 +40,5 @@ async fn main() -> Result<()> {
 
     info!("OpenAPI docs at {}", docs);
 
-    Ok(serve(listener, app).await?)}
+    Ok(serve(listener, app).await?)
+}

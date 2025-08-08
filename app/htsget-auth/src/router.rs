@@ -1,19 +1,39 @@
 //! The htsget auth service axum router.
 //!
 
+use crate::config::Config;
+use crate::error::Error;
+use crate::error::Error::{AuthorizationError, ConfigError};
 use crate::error::ErrorResponse;
-use axum::http::{StatusCode, Uri};
+use crate::error::Result;
+use axum::Json;
 use axum::Router;
+use axum::extract::{Path, Query, State};
+use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::routing::get;
+use htsget_config::config::advanced::auth::response::{
+    AuthorizationRestrictionsBuilder, AuthorizationRuleBuilder, ReferenceNameRestrictionBuilder,
+};
+use htsget_config::config::advanced::auth::{
+    AuthConfigBuilder, AuthMode, AuthorizationRestrictions,
+};
+use htsget_config::types::Request;
+use htsget_http::middleware::auth::{Auth, AuthBuilder};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-use utoipa::{openapi, Modify, OpenApi};
-use utoipa::openapi::security::{Http, HttpAuthScheme, SecurityScheme};
-use utoipa_swagger_ui::SwaggerUi;
-use crate::config::Config;
-use crate::error::Result;
-use crate::error::Error;
 use tracing::trace;
+use utoipa::openapi::security::{Http, HttpAuthScheme, SecurityScheme};
+use utoipa::{Modify, OpenApi, ToSchema, openapi};
+use utoipa_swagger_ui::SwaggerUi;
+
+/// App state containing config.
+#[derive(Clone)]
+pub struct AppState {
+    auth: Arc<Auth>,
+}
 
 /// A handler for when a route is not found.
 async fn fallback(uri: Uri) -> (StatusCode, String) {
@@ -21,43 +41,117 @@ async fn fallback(uri: Uri) -> (StatusCode, String) {
 }
 
 /// Create the router for the htsget auth service.
-pub fn router(config: Config) -> Router {
-    Router::default()
-        .route(
-            "/auth",
-            get(auth),
-        )
+pub fn router(config: Config) -> Result<Router> {
+    let mut auth_config = AuthConfigBuilder::default();
+    if let Some(subject) = config.validate_subject {
+        auth_config = auth_config.validate_subject(subject);
+    }
+    if let Some(issuer) = config.validate_issuer {
+        auth_config = auth_config.validate_issuer(issuer);
+    }
+    if let Some(audience) = config.validate_audience {
+        auth_config = auth_config.validate_audience(audience);
+    }
+    let auth_config = auth_config
+        .authentication_only(true)
+        .auth_mode(AuthMode::Jwks(config.jwks_url.clone()))
+        .trusted_authorization_url(config.jwks_url)
+        .build()
+        .map_err(|err| ConfigError(err.to_string()))?;
+
+    let router = Router::default()
+        .route("/auth", get(auth))
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .with_state(AppState {
+            auth: Arc::new(
+                AuthBuilder::default()
+                    .with_config(auth_config)
+                    .build()
+                    .map_err(|err| ConfigError(err.to_string()))?,
+            ),
+        });
+
+    Ok(Router::new()
+        .nest("/api/v1", router)
         .fallback(fallback)
-        .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-        )
-        // .layer(AuthLayer::from(
-        //     AuthBuilder::default().with_config(auth).build()?,
-        // ))
-        .merge(swagger_ui())
+        .merge(swagger_ui()))
 }
+
+/// The htsget authorization restrictions response.
+#[derive(Debug, ToSchema, Serialize, Deserialize)]
+#[schema(value_type = Object)]
+#[serde(transparent)]
+pub struct AuthResponse(#[schema(inline)] AuthorizationRestrictions);
 
 #[utoipa::path(
     get,
     path = "/auth",
     responses(
-        (status = OK, description = "The htsget restrictions for the request", body = ()),
+        (status = OK, description = "The htsget restrictions for the request", body = AuthResponse),
         Error,
     ),
     context_path = "/api/v1",
     tag = "get",
 )]
-pub async fn auth() -> Result<()> {
+pub async fn auth(
+    query: Query<HashMap<String, String>>,
+    path: Path<String>,
+    headers: HeaderMap,
+    state: State<AppState>,
+) -> Result<Json<AuthResponse>> {
     trace!("processing htsget auth request");
-    Ok(())
+
+    let request = Request::new(path.0, query.0, headers);
+    let claims = state
+        .auth
+        .validate_jwt(&request)
+        .await
+        .map_err(|err| AuthorizationError(err.to_string()))?;
+
+    let groups = claims
+        .claims
+        .get("cognito:groups")
+        .and_then(|group| group.as_array())
+        .map(|groups| {
+            groups
+                .iter()
+                .flat_map(|group| group.as_str())
+                .collect::<Vec<_>>()
+        })
+        .ok_or_else(|| {
+            AuthorizationError("invalid cognito groups inside JWT claims".to_string())
+        })?;
+
+    let restrictions = if groups.len() == 1 && groups[0] == "curator" {
+        // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000012048;r=17:43044295-43170245
+        AuthorizationRestrictionsBuilder::default()
+            .rule(
+                AuthorizationRuleBuilder::default()
+                    .path(".*")
+                    .reference_name(
+                        ReferenceNameRestrictionBuilder::default()
+                            .name("chr17")
+                            .start(43044295)
+                            .end(43170245)
+                            .build()?,
+                    )
+                    .build()?,
+            )
+            .build()?
+    } else {
+        AuthorizationRestrictionsBuilder::default()
+            .rule(AuthorizationRuleBuilder::default().path(".*").build()?)
+            .build()?
+    };
+
+    Ok(Json(AuthResponse(restrictions)))
 }
 
 /// API docs.
 #[derive(Debug, OpenApi)]
 #[openapi(
     paths(auth),
-    components(schemas(ErrorResponse)),
+    components(schemas(AuthResponse, ErrorResponse)),
     modifiers(&SecurityAddon),
     security(("orcabus_api_token" = []))
 )]

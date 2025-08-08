@@ -1,18 +1,15 @@
 //! Handles loading environment variables as config options for htsget auth.
 //!
 
+use crate::error::Error::ConfigError;
+use crate::error::Result;
 use axum::http::Uri;
 use envy::prefixed;
-use serde::de::Error;
-use serde::{Deserialize, Deserializer};
-use std::str::FromStr;
+use serde::Deserialize;
 use tracing_subscriber::EnvFilter;
-use tracing_subscriber::fmt::format::Format;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use crate::error::Error::ConfigError;
-use crate::error::Result;
 
 /// Configuration environment variables for htsget auth.
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
@@ -21,7 +18,7 @@ pub struct Config {
     pub(crate) jwks_url: Uri,
     pub(crate) validate_audience: Option<Vec<String>>,
     pub(crate) validate_issuer: Option<Vec<String>>,
-    pub(crate) validate_subject: Option<String>
+    pub(crate) validate_subject: Option<String>,
 }
 
 pub const CONFIG_PREFIX: &str = "HTSGET_AUTH_";
@@ -29,12 +26,15 @@ pub const CONFIG_PREFIX: &str = "HTSGET_AUTH_";
 impl Config {
     /// Load environment variables into a `Config` struct.
     pub fn load() -> Result<Self> {
-        prefixed(CONFIG_PREFIX).from_env::<Self>().map_err(|err| ConfigError(err.to_string()))
+        prefixed(CONFIG_PREFIX)
+            .from_env::<Self>()
+            .map_err(|err| ConfigError(err.to_string()))
     }
 
     /// Initialize the default tracing subscriber for logs.
     pub fn init_tracing() {
-        let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+        let env_filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
         tracing_subscriber::registry()
             .with(layer().compact())
@@ -45,8 +45,6 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    use envy::from_iter;
-
     use super::*;
 
     #[test]
@@ -60,7 +58,7 @@ mod tests {
         .into_iter()
         .map(|(key, value)| (key.to_string(), value.to_string()));
 
-        let config: Config = from_iter(data).unwrap();
+        let config: Config = prefixed(CONFIG_PREFIX).from_iter(data).unwrap();
 
         assert_eq!(
             config,
