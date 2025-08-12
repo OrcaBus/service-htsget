@@ -8,7 +8,7 @@ use crate::error::ErrorResponse;
 use crate::error::Result;
 use axum::Json;
 use axum::Router;
-use axum::extract::{Path, Query, State};
+use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::routing::get;
 use htsget_config::config::advanced::auth::response::{
@@ -17,10 +17,8 @@ use htsget_config::config::advanced::auth::response::{
 use htsget_config::config::advanced::auth::{
     AuthConfigBuilder, AuthMode, AuthorizationRestrictions,
 };
-use htsget_config::types::Request;
 use htsget_http::middleware::auth::{Auth, AuthBuilder};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -79,8 +77,8 @@ pub fn router(config: Config) -> Result<Router> {
 
 /// The htsget authorization restrictions response.
 #[derive(Debug, ToSchema, Serialize, Deserialize)]
-#[schema(value_type = Object)]
-#[serde(transparent)]
+#[schema(value_type = Value)]
+#[serde(transparent, rename_all = "camelCase")]
 pub struct AuthResponse(#[schema(inline)] AuthorizationRestrictions);
 
 #[utoipa::path(
@@ -94,17 +92,14 @@ pub struct AuthResponse(#[schema(inline)] AuthorizationRestrictions);
     tag = "get",
 )]
 pub async fn auth(
-    query: Query<HashMap<String, String>>,
-    path: Path<String>,
     headers: HeaderMap,
     state: State<AppState>,
 ) -> Result<Json<AuthResponse>> {
     trace!("processing htsget auth request");
 
-    let request = Request::new(path.0, query.0, headers);
     let claims = state
         .auth
-        .validate_jwt(&request)
+        .validate_jwt(&headers)
         .await
         .map_err(|err| AuthorizationError(err.to_string()))?;
 
@@ -122,7 +117,11 @@ pub async fn auth(
             AuthorizationError("invalid cognito groups inside JWT claims".to_string())
         })?;
 
-    let restrictions = if groups.len() == 1 && groups[0] == "curator" {
+    let restrictions = if groups.contains(&"admin") {
+        AuthorizationRestrictionsBuilder::default()
+            .rule(AuthorizationRuleBuilder::default().path(".*").build()?)
+            .build()?
+    } else if groups.contains(&"curators") {
         // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000012048;r=17:43044295-43170245
         AuthorizationRestrictionsBuilder::default()
             .rule(

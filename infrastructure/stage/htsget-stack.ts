@@ -40,7 +40,7 @@ export interface HtsgetStackConfig {
 export type HtsgetStackProps = StackProps & HtsgetStackConfig;
 
 /**
- * Deploys htsget-rs with access to filemanager data.
+ * Deploys htsget-rs and the htsget-auth service with access to filemanager data.
  */
 export class HtsgetStack extends Stack {
   private readonly vpc: IVpc;

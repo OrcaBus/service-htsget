@@ -8,8 +8,6 @@ rust-version.workspace = true
 
 [dependencies]
 axum = "0.8"
-axum-extra = { version = "0.10", features = ["typed-header"] }
-headers = "0.4"
 envy = "0.4"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
@@ -21,8 +19,7 @@ utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid", "url"] }
 utoipa-swagger-ui = { version = "9", features = ["axum", "debug-embed", "url"] }
 tracing = "0.1"
 htsget-config = "0.15"
-htsget-axum = "0.4"
-htsget-http = "0.6"
+htsget-http = "0.7"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }
