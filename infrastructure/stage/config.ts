@@ -18,5 +18,10 @@ export const getHtsgetProps = (stage: StageName): HtsgetStackConfig => {
     },
     buckets: [...fileManagerBuckets[stage], ...fileManagerCacheBuckets[stage]],
     roleName: fileManagerIngestRoleName,
+    apiGatewayCognitoProps: {
+      ...getDefaultApiGatewayConfiguration(stage),
+      apiName: 'HtsGetAuth',
+      customDomainNamePrefix: 'htsget-auth',
+    },
   };
 };
