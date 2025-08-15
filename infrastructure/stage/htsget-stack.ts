@@ -68,7 +68,7 @@ export class HtsgetStack extends Stack {
     super(scope, id, props);
 
     this.vpc = Vpc.fromLookup(this, 'MainVpc', props.vpcProps);
-    this.apiGateway = new OrcaBusApiGateway(this, 'ApiGateway', props.apiGatewayProps);
+    this.apiGateway = new OrcaBusApiGateway(this, 'HtsGetAuthApiGateway', props.apiGatewayProps);
     const userPoolIdParam = StringParameter.fromStringParameterName(
       this,
       'CognitoUserPoolIdParameter',
@@ -90,7 +90,7 @@ export class HtsgetStack extends Stack {
   }
 
   private htsGetAuthFunction(props: HtsgetStackProps, issuer: string, audience: string[]): string {
-    const htsgetAuthRole = new NamedLambdaRole(this, 'Role');
+    const htsgetAuthRole = new NamedLambdaRole(this, 'HtsGetAuthRole');
     htsgetAuthRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole')
     );
@@ -174,7 +174,7 @@ export class HtsgetStack extends Stack {
       vpc: this.vpc,
       role,
       httpApi: this.apiGateway.httpApi,
-      gitReference: 'htsget-lambda-v0.6.0',
+      gitReference: 'htsget-lambda-v0.7.2',
       gitForceClone: false,
     });
   }

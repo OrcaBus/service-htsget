@@ -8,7 +8,7 @@ use crate::error::ErrorResponse;
 use crate::error::Result;
 use axum::Json;
 use axum::Router;
-use axum::extract::{Query, State};
+use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::routing::get;
 use htsget_config::config::advanced::auth::response::{
@@ -91,10 +91,7 @@ pub struct AuthResponse(#[schema(inline)] AuthorizationRestrictions);
     context_path = "/api/v1",
     tag = "get",
 )]
-pub async fn auth(
-    headers: HeaderMap,
-    state: State<AppState>,
-) -> Result<Json<AuthResponse>> {
+pub async fn auth(headers: HeaderMap, state: State<AppState>) -> Result<Json<AuthResponse>> {
     trace!("processing htsget auth request");
 
     let claims = state
@@ -122,16 +119,16 @@ pub async fn auth(
             .rule(AuthorizationRuleBuilder::default().path(".*").build()?)
             .build()?
     } else if groups.contains(&"curators") {
-        // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000012048;r=17:43044295-43170245
+        // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198804;r=MT:5874-7475;t=ENST00000361624
         AuthorizationRestrictionsBuilder::default()
             .rule(
                 AuthorizationRuleBuilder::default()
                     .path(".*")
                     .reference_name(
                         ReferenceNameRestrictionBuilder::default()
-                            .name("chr17")
-                            .start(43044295)
-                            .end(43170245)
+                            .name("chrM")
+                            .start(5904)
+                            .end(7445)
                             .build()?,
                     )
                     .build()?,
