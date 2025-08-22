@@ -85,23 +85,23 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: make test
 
-    test-app:
-      runs-on: ubuntu-24.04-arm
-      if: ${{ !github.event.pull_request.draft }}
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
-          with:
-            fetch-depth: 0
+  test-app:
+    runs-on: ubuntu-24.04-arm
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-        - name: Cache
-          uses: mozilla-actions/sccache-action@v0.0.9
-        - name: Install Rust
-          uses: dtolnay/rust-toolchain@stable
-          with:
-            components: rustfmt, clippy
+      - name: Cache
+        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
-        - name: Test
-          working-directory: ./app
-          run: |
-            make test
+      - name: Test
+        working-directory: ./app
+        run: |
+          make test

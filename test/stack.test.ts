@@ -22,6 +22,22 @@ describe('cdk-nag-stateless-toolchain-stack', () => {
   });
 
   Aspects.of(htsgetStack).add(new AwsSolutionsChecks());
+  NagSuppressions.addStackSuppressions(
+    htsgetStack,
+    [{ id: 'AwsSolutions-IAM4', reason: 'allow AWS managed policy' }],
+    true
+  );
+  NagSuppressions.addResourceSuppressionsByPath(
+    htsgetStack,
+    '/HtsgetStack/GetSchemaHttpRoute/Resource',
+    [
+      {
+        id: 'AwsSolutions-APIG4',
+        reason: 'we have the default Cognito UserPool authorizer',
+      },
+    ],
+    true
+  );
 
   test(`cdk-nag AwsSolutions Pack errors`, () => {
     const errors = Annotations.fromStack(htsgetStack)
