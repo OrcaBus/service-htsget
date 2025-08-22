@@ -8,7 +8,7 @@ import {
   OrcaBusApiGateway,
   OrcaBusApiGatewayProps,
 } from '@orcabus/platform-cdk-constructs/api-gateway';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { IStringParameter, StringParameter } from 'aws-cdk-lib/aws-ssm';
 import path from 'path';
 import { spawnSync } from 'node:child_process';
 import { RustFunction } from 'cargo-lambda-cdk';
@@ -33,7 +33,7 @@ export interface HtsgetStackConfig {
   /**
    * API gateway construct props.
    */
-  apiGatewayProps: OrcaBusApiGatewayProps;
+  apiGatewayHtsgetProps: OrcaBusApiGatewayProps;
   /**
    * The buckets to configure for htsget access.
    */
@@ -49,7 +49,7 @@ export interface HtsgetStackConfig {
   /**
    * API gateway props for configuring the htsget-auth function.
    */
-  apiGatewayCognitoProps: OrcaBusApiGatewayProps;
+  apiGatewayAuthProps: OrcaBusApiGatewayProps;
 }
 
 /**
@@ -62,37 +62,46 @@ export type HtsgetStackProps = StackProps & HtsgetStackConfig;
  */
 export class HtsgetStack extends Stack {
   private readonly vpc: IVpc;
-  private readonly apiGateway: OrcaBusApiGateway;
 
   constructor(scope: Construct, id: string, props: HtsgetStackProps) {
     super(scope, id, props);
 
     this.vpc = Vpc.fromLookup(this, 'MainVpc', props.vpcProps);
-    this.apiGateway = new OrcaBusApiGateway(this, 'HtsGetAuthApiGateway', props.apiGatewayProps);
     const userPoolIdParam = StringParameter.fromStringParameterName(
       this,
       'CognitoUserPoolIdParameter',
       DEFAULT_COGNITO_USER_POOL_ID_PARAMETER_NAME
     );
 
-    if (props.apiGatewayProps.cognitoClientIdParameterNameArray === undefined) {
-      throw new Error('no cient id parameters');
-    }
-    const audience = props.apiGatewayProps.cognitoClientIdParameterNameArray.map(
+    const authUrl = this.htsGetAuthFunction(props, userPoolIdParam);
+    this.htsGetServerFunction(props, authUrl, userPoolIdParam);
+  }
+
+  private formatAudienceAndIssuer(
+    id: string,
+    props: OrcaBusApiGatewayProps,
+    userPoolIdParam: IStringParameter
+  ): [string[], string] {
+    const audience = props.cognitoClientIdParameterNameArray.map(
       (name) =>
-        StringParameter.fromStringParameterName(this, `CognitoClientId${name}Parameter`, name)
+        StringParameter.fromStringParameterName(this, `${id}CognitoClientId${name}Parameter`, name)
           .stringValue
     );
     const issuer = `https://cognito-idp.${this.region}.amazonaws.com/${userPoolIdParam.stringValue}`;
 
-    const authUrl = this.htsGetAuthFunction(props, issuer, audience);
-    this.htsGetServerFunction(props, issuer, audience, authUrl);
+    return [audience, issuer];
   }
 
-  private htsGetAuthFunction(props: HtsgetStackProps, issuer: string, audience: string[]): string {
+  private htsGetAuthFunction(props: HtsgetStackProps, userPoolIdParam: IStringParameter): string {
     const htsgetAuthRole = new NamedLambdaRole(this, 'HtsGetAuthRole');
     htsgetAuthRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole')
+    );
+
+    const [audience, issuer] = this.formatAudienceAndIssuer(
+      'HtsGetAuth',
+      props.apiGatewayHtsgetProps,
+      userPoolIdParam
     );
 
     const manifestPath = path.join(__dirname, '..', '..', 'app');
@@ -127,7 +136,7 @@ export class HtsgetStack extends Stack {
       vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
     });
 
-    const apiGateway = new OrcaBusApiGateway(this, 'ApiGateway', props.apiGatewayCognitoProps);
+    const apiGateway = new OrcaBusApiGateway(this, 'ApiGateway', props.apiGatewayAuthProps);
     const httpApi = apiGateway.httpApi;
     const integration = new HttpLambdaIntegration('ApiIntegration', htsgetAuthFunction);
     new HttpRoute(this, 'GetSchemaHttpRoute', {
@@ -147,12 +156,21 @@ export class HtsgetStack extends Stack {
 
   private htsGetServerFunction(
     props: HtsgetStackProps,
-    issuer: string,
-    audience: string[],
-    auth_url: string
+    auth_url: string,
+    userPoolIdParam: IStringParameter
   ) {
     const role = Role.fromRoleName(this, 'Role', props.roleName);
 
+    const apiGateway = new OrcaBusApiGateway(
+      this,
+      'HtsGetAuthApiGateway',
+      props.apiGatewayHtsgetProps
+    );
+    const [audience, issuer] = this.formatAudienceAndIssuer(
+      'HtsGet',
+      props.apiGatewayHtsgetProps,
+      userPoolIdParam
+    );
     new HtsgetLambda(this, 'HtsGetServer', {
       htsgetConfig: {
         environment_override: {
@@ -164,17 +182,18 @@ export class HtsgetStack extends Stack {
             return `{ regex=${regex}, substitution_string=${substitution_string}, backend=${backend} }`;
           }),
           HTSGET_AUTH_JWKS_URL: `${issuer}/.well-known/jwks.json`,
-          HTSGET_AUTH_VALIDATE_AUDIENCE: audience.join(','),
-          HTSGET_AUTH_VALIDATE_ISSUER: issuer,
-          HTSGET_AUTH_TRUSTED_AUTHORIZATION_URLS: auth_url,
+          HTSGET_AUTH_VALIDATE_AUDIENCE: `[${audience.join(',')}]`,
+          HTSGET_AUTH_VALIDATE_ISSUER: `[${issuer}]`,
+          HTSGET_AUTH_TRUSTED_AUTHORIZATION_URLS: `[https://${auth_url}]`,
+          AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH: true,
         },
       },
       buildEnvironment: props.buildEnvironment,
       cargoLambdaFlags: ['--features', 'aws'],
       vpc: this.vpc,
       role,
-      httpApi: this.apiGateway.httpApi,
-      gitReference: 'htsget-lambda-v0.7.2',
+      httpApi: apiGateway.httpApi,
+      gitReference: 'htsget-lambda-v0.7.3',
       gitForceClone: false,
     });
   }

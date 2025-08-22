@@ -118,7 +118,7 @@ pub async fn auth(headers: HeaderMap, state: State<AppState>) -> Result<Json<Aut
         AuthorizationRestrictionsBuilder::default()
             .rule(AuthorizationRuleBuilder::default().path(".*").build()?)
             .build()?
-    } else if groups.contains(&"curators") {
+    } else if groups.contains(&"curators_test") {
         // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198804;r=MT:5874-7475;t=ENST00000361624
         AuthorizationRestrictionsBuilder::default()
             .rule(
