@@ -55,8 +55,9 @@ There are no automated changelogs or releases, however semantic versioning is fo
 Infrastructure & Deployment
 --------------------------------------------------------------------------------
 
-This is a stateless-only service that consists of a simple Lambda function that responds to API Gateway requests.
-The Lambda function uses the [`HtsgetLambda`][htsget-deploy] construct to deploy the service.
+This is a stateless-only service that consists of a Lambda functions that responds to API Gateway requests.
+The Lambda function uses the [`HtsgetLambda`][htsget-deploy] construct to deploy the service, and a custom
+authorization service that responds to [htsget-rs].
 
 [htsget-deploy]: https://github.com/umccr/htsget-deploy
 
@@ -167,3 +168,5 @@ Run the cdk-nag tests using:
 ```sh
 make test
 ```
+
+[htsget-rs]: https://github.com/umccr/htsget-rs

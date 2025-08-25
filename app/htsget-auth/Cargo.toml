@@ -1,0 +1,26 @@
+[package]
+name = "htsget-auth"
+version = "0.1.0"
+license.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum = "0.8"
+envy = "0.4"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+http-serde = "2"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi", "env-filter"] }
+tower-http = { version = "0.6", features = ["trace"] }
+tower = "0.5"
+utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid", "url"] }
+utoipa-swagger-ui = { version = "9", features = ["axum", "debug-embed", "url"] }
+tracing = "0.1"
+htsget-config = "0.15"
+htsget-http = "0.7"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
+axum-test = "17"

@@ -1,0 +1,14 @@
+[workspace]
+resolver = "3"
+
+members = [
+    "htsget-auth",
+    "htsget-auth-api-server",
+    "htsget-auth-api-lambda"
+]
+
+[workspace.package]
+license = "MIT"
+edition = "2024"
+authors = ["Marko Malenic <mmalenic1@gmail.com>"]
+rust-version = "1.86"
