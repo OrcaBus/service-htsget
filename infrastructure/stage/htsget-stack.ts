@@ -92,6 +92,22 @@ export class HtsgetStack extends Stack {
     return [audience, issuer];
   }
 
+  private cargoLambdaFlags(): string[] {
+    const defaultTarget = spawnSync('rustc', ['--version', '--verbose'])
+      .stdout.toString()
+      .split(/\r?\n/)
+      .find((line) => line.startsWith('host:'))
+      ?.replace('host:', '')
+      .trim();
+
+    const flags = ['--features', 'aws', '--features', 'experimental'];
+    if (defaultTarget === 'aarch64-unknown-linux-gnu') {
+      return [...flags, '--compiler', 'cargo'];
+    } else {
+      return flags;
+    }
+  }
+
   private htsGetAuthFunction(props: HtsgetStackProps, userPoolIdParam: IStringParameter): string {
     const htsgetAuthRole = new NamedLambdaRole(this, 'HtsGetAuthRole');
     htsgetAuthRole.addManagedPolicy(
@@ -105,12 +121,6 @@ export class HtsgetStack extends Stack {
     );
 
     const manifestPath = path.join(__dirname, '..', '..', 'app');
-    const defaultTarget = spawnSync('rustc', ['--version', '--verbose'])
-      .stdout.toString()
-      .split(/\r?\n/)
-      .find((line) => line.startsWith('host:'))
-      ?.replace('host:', '')
-      .trim();
     const htsgetAuthFunction = new RustFunction(this, 'HtsGetAuthFunction', {
       manifestPath: manifestPath,
       binaryName: 'htsget-auth-api-lambda',
@@ -118,9 +128,7 @@ export class HtsgetStack extends Stack {
         environment: {
           ...props.buildEnvironment,
         },
-        ...(defaultTarget === 'aarch64-unknown-linux-gnu' && {
-          cargoLambdaFlags: ['--compiler', 'cargo'],
-        }),
+        cargoLambdaFlags: this.cargoLambdaFlags(),
       },
       memorySize: 128,
       timeout: Duration.seconds(28),
@@ -189,7 +197,7 @@ export class HtsgetStack extends Stack {
         },
       },
       buildEnvironment: props.buildEnvironment,
-      cargoLambdaFlags: ['--features', 'aws'],
+      cargoLambdaFlags: this.cargoLambdaFlags(),
       vpc: this.vpc,
       role,
       httpApi: apiGateway.httpApi,
