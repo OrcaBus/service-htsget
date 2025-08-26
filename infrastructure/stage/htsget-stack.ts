@@ -92,7 +92,7 @@ export class HtsgetStack extends Stack {
     return [audience, issuer];
   }
 
-  private cargoLambdaFlags(): string[] {
+  private cargoLambdaFlags(htsgetFeatures: boolean): string[] {
     const defaultTarget = spawnSync('rustc', ['--version', '--verbose'])
       .stdout.toString()
       .split(/\r?\n/)
@@ -100,7 +100,7 @@ export class HtsgetStack extends Stack {
       ?.replace('host:', '')
       .trim();
 
-    const flags = ['--features', 'aws', '--features', 'experimental'];
+    const flags = htsgetFeatures ? ['--features', 'aws', '--features', 'experimental'] : [];
     if (defaultTarget === 'aarch64-unknown-linux-gnu') {
       return [...flags, '--compiler', 'cargo'];
     } else {
@@ -128,7 +128,7 @@ export class HtsgetStack extends Stack {
         environment: {
           ...props.buildEnvironment,
         },
-        cargoLambdaFlags: this.cargoLambdaFlags(),
+        cargoLambdaFlags: this.cargoLambdaFlags(false),
       },
       memorySize: 128,
       timeout: Duration.seconds(28),
@@ -197,7 +197,7 @@ export class HtsgetStack extends Stack {
         },
       },
       buildEnvironment: props.buildEnvironment,
-      cargoLambdaFlags: this.cargoLambdaFlags(),
+      cargoLambdaFlags: this.cargoLambdaFlags(true),
       vpc: this.vpc,
       role,
       httpApi: apiGateway.httpApi,
