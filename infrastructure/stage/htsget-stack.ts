@@ -91,8 +91,9 @@ export class HtsgetStack extends Stack {
     return [audience, issuer];
   }
 
-  private cargoLambdaFlags(): string[] {
-    return ['--features', 'aws', '--features', 'experimental', '--compiler', 'cargo'];
+  private cargoLambdaFlags(htsgetFeatures: boolean): string[] {
+    const flags = htsgetFeatures ? ['--features', 'aws', '--features', 'experimental'] : [];
+    return [...flags, '--compiler', 'cargo'];
   }
 
   private htsGetAuthFunction(props: HtsgetStackProps, userPoolIdParam: IStringParameter): string {
@@ -115,7 +116,7 @@ export class HtsgetStack extends Stack {
         environment: {
           ...props.buildEnvironment,
         },
-        cargoLambdaFlags: this.cargoLambdaFlags(),
+        cargoLambdaFlags: this.cargoLambdaFlags(false),
       },
       memorySize: 128,
       timeout: Duration.seconds(28),
@@ -186,7 +187,7 @@ export class HtsgetStack extends Stack {
         },
       },
       buildEnvironment: props.buildEnvironment,
-      cargoLambdaFlags: this.cargoLambdaFlags(),
+      cargoLambdaFlags: this.cargoLambdaFlags(true),
       vpc: this.vpc,
       role,
       httpApi: apiGateway.httpApi,
