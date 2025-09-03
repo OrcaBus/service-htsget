@@ -180,6 +180,8 @@ export class HtsgetStack extends Stack {
           HTSGET_AUTH_VALIDATE_AUDIENCE: `[${audience.join(',')}]`,
           HTSGET_AUTH_VALIDATE_ISSUER: `[${issuer}]`,
           HTSGET_AUTH_TRUSTED_AUTHORIZATION_URLS: `[https://${auth_url}]`,
+          HTSGET_AUTH_SUPPRESS_ERRORS: true,
+          HTSGET_AUTH_ADD_HINT: true,
           AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH: true,
         },
       },
