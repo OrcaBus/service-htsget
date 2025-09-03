@@ -38,7 +38,7 @@
     "typescript-eslint": "^8.40.0"
   },
   "dependencies": {
-    "@orcabus/platform-cdk-constructs": "^0.0.69",
+    "@orcabus/platform-cdk-constructs": "^0.0.73",
     "aws-cdk-lib": "^2.212.0",
     "htsget-lambda": "^0.9.4",
     "constructs": "^10.4.2",
