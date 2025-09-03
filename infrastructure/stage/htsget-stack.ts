@@ -10,7 +10,6 @@ import {
 } from '@orcabus/platform-cdk-constructs/api-gateway';
 import { IStringParameter, StringParameter } from 'aws-cdk-lib/aws-ssm';
 import path from 'path';
-import { spawnSync } from 'node:child_process';
 import { RustFunction } from 'cargo-lambda-cdk';
 import { Architecture } from 'aws-cdk-lib/aws-lambda';
 import { NamedLambdaRole } from '@orcabus/platform-cdk-constructs/named-lambda-role';
@@ -92,20 +91,8 @@ export class HtsgetStack extends Stack {
     return [audience, issuer];
   }
 
-  private cargoLambdaFlags(htsgetFeatures: boolean): string[] {
-    const defaultTarget = spawnSync('rustc', ['--version', '--verbose'])
-      .stdout.toString()
-      .split(/\r?\n/)
-      .find((line) => line.startsWith('host:'))
-      ?.replace('host:', '')
-      .trim();
-
-    const flags = htsgetFeatures ? ['--features', 'aws', '--features', 'experimental'] : [];
-    if (defaultTarget === 'aarch64-unknown-linux-gnu') {
-      return [...flags, '--compiler', 'cargo'];
-    } else {
-      return flags;
-    }
+  private cargoLambdaFlags(): string[] {
+    return ['--features', 'aws', '--features', 'experimental', '--compiler', 'cargo'];
   }
 
   private htsGetAuthFunction(props: HtsgetStackProps, userPoolIdParam: IStringParameter): string {
@@ -128,7 +115,7 @@ export class HtsgetStack extends Stack {
         environment: {
           ...props.buildEnvironment,
         },
-        cargoLambdaFlags: this.cargoLambdaFlags(false),
+        cargoLambdaFlags: this.cargoLambdaFlags(),
       },
       memorySize: 128,
       timeout: Duration.seconds(28),
@@ -193,15 +180,17 @@ export class HtsgetStack extends Stack {
           HTSGET_AUTH_VALIDATE_AUDIENCE: `[${audience.join(',')}]`,
           HTSGET_AUTH_VALIDATE_ISSUER: `[${issuer}]`,
           HTSGET_AUTH_TRUSTED_AUTHORIZATION_URLS: `[https://${auth_url}]`,
+          HTSGET_AUTH_SUPPRESS_ERRORS: true,
+          HTSGET_AUTH_ADD_HINT: true,
           AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH: true,
         },
       },
       buildEnvironment: props.buildEnvironment,
-      cargoLambdaFlags: this.cargoLambdaFlags(true),
+      cargoLambdaFlags: this.cargoLambdaFlags(),
       vpc: this.vpc,
       role,
       httpApi: apiGateway.httpApi,
-      gitReference: 'htsget-lambda-v0.7.3',
+      gitReference: 'htsget-lambda-v0.7.4',
       gitForceClone: false,
     });
   }

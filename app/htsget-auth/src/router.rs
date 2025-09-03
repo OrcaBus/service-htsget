@@ -118,21 +118,39 @@ pub async fn auth(headers: HeaderMap, state: State<AppState>) -> Result<Json<Aut
         AuthorizationRestrictionsBuilder::default()
             .rule(AuthorizationRuleBuilder::default().path(".*").build()?)
             .build()?
-    } else if groups.contains(&"curators_test") {
-        // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198804;r=MT:5874-7475;t=ENST00000361624
-        AuthorizationRestrictionsBuilder::default()
-            .rule(
+    } else if groups.contains(&"curators") {
+        let create_rule = |start: u32, end: u32, name: &str| {
+            Ok::<_, Error>(
                 AuthorizationRuleBuilder::default()
                     .path(".*")
                     .reference_name(
                         ReferenceNameRestrictionBuilder::default()
-                            .name("chrM")
-                            .start(5904)
-                            .end(7445)
+                            .name(name)
+                            .start(start)
+                            .end(end)
                             .build()?,
                     )
                     .build()?,
             )
+        };
+        // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198804;r=MT:5874-7475;t=ENST00000361624
+        AuthorizationRestrictionsBuilder::default()
+            .rules(vec![
+                // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198804;r=MT:5874-7475;t=ENST00000361624
+                create_rule(5904, 7445, "chrM")?,
+                create_rule(5904, 7445, "M")?,
+                create_rule(5904, 7445, "chrMT")?,
+                create_rule(5904, 7445, "MT")?,
+                // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000133703;r=12:25205246-25250936
+                create_rule(25205246, 25250936, "chr12")?,
+                create_rule(25205246, 25250936, "12")?,
+                // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000139618;r=13:32315086-32400268
+                create_rule(32315086, 32400268, "chr13")?,
+                create_rule(32315086, 32400268, "13")?,
+                // https://asia.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000012048;r=17:43044292-43170245
+                create_rule(43044292, 43170245, "chr17")?,
+                create_rule(43044292, 43170245, "17")?,
+            ])
             .build()?
     } else {
         AuthorizationRestrictionsBuilder::default()
