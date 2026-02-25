@@ -23,4 +23,4 @@ htsget-http = "0.7"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }
-axum-test = "17"
+axum-test = "18"
