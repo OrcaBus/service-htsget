@@ -1,10 +1,10 @@
 import { App, Aspects } from 'aws-cdk-lib';
 import { Annotations, Match } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
-import { getHtsgetProps } from '../infrastructure/stage/config';
-import { HtsgetStack } from '../infrastructure/stage/htsget-stack';
+import { getHtsgetProps } from '../../infrastructure/stage/config';
+import { HtsgetStack } from '../../infrastructure/stage/htsget-stack';
 import { synthesisMessageToString } from '@orcabus/platform-cdk-constructs/utils';
-import { StatelessStack } from '../infrastructure/toolchain/stateless-stack';
+import { StatelessStack } from '../../infrastructure/toolchain/stateless-stack';
 
 describe('cdk-nag-stateless-toolchain-stack', () => {
   const stackApp = new App();

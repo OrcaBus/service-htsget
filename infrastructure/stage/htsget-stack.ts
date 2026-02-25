@@ -2,7 +2,6 @@ import { Construct } from 'constructs';
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
 import { IVpc, SubnetType, Vpc, VpcLookupOptions } from 'aws-cdk-lib/aws-ec2';
-import { HtsgetLambda } from 'htsget-lambda';
 import {
   DEFAULT_COGNITO_USER_POOL_ID_PARAMETER_NAME,
   OrcaBusApiGateway,
@@ -20,6 +19,7 @@ import {
   HttpRoute,
   HttpRouteKey,
 } from 'aws-cdk-lib/aws-apigatewayv2';
+import { HtsgetLambda } from '@umccr/htsget-lambda/lib/htsget-lambda';
 
 /**
  * Configurable props for the htsget stack.
@@ -193,6 +193,7 @@ export class HtsgetStack extends Stack {
       httpApi: apiGateway.httpApi,
       gitReference: 'htsget-lambda-v0.7.4',
       gitForceClone: false,
+      runtime: 'provided.al2023',
     });
   }
 }
